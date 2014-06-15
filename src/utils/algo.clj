@@ -106,3 +106,11 @@ Examples :
 (comment
   (zip [1 2 3] [:a :b :c] ["You" "Pi" "Ya"]) => [[1 :a "You"] [2 :b "Pi"] [3 :c "Ya"]]
   )
+
+(defn values-counts [f coll]
+  (->> coll (group-by f) (transform-vals count)))
+(comment 
+  (values-counts identity
+                  [:a :b :a :a :c :b :a :d :a :c :a :c :c :c :b ]) => {:d 1, :c 5, :b 3, :a 6}
+  (values-counts inc
+                  [0 1 1 2 2 2 3 3 3 3]) => {4 4, 3 3, 2 2, 1 1})

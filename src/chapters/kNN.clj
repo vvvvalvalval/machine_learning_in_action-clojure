@@ -26,7 +26,7 @@
 
 ;; GENERIC kNN CLASSIFICATION
 (let [square #(* % %)]
-  (defn euclidean-distance "fast euclidian distance" [a b]
+  (defn euclidean-distance "faster euclidian distance" [a b]
    (loop [squares-sum 0.0
           rem-a a, rem-b b]
      (if rem-a
@@ -93,17 +93,17 @@
 (def test-digits-path "testDigits")
 
 (def read-digits-dataset 
-  (let [find-digit (fn [file] (->> file .getName first))]
+  (let [find-digit (fn [^java.io.File file] (->> file .getName first))]
     (fn [dir-name]
       (let [files (ct/files-under-dir dir-name)] 
-        {:group (->> files (map slurp) (map to-digit-vector)),
-        :labels (->> files (map find-digit))}
+        {:group (->> files (map slurp) (map to-digit-vector) doall),
+        :labels (->> files (map find-digit) doall)}
         ))
     ))
 (do 
-  (def fetch-training-dataset #(let [res (doall (read-digits-dataset training-digits-path))]
+  (def fetch-training-dataset #(let [res (read-digits-dataset training-digits-path)]
                                  (println "Done loading the digits training set") res))
-  (def fetch-test-dataset #(let [res (doall (read-digits-dataset test-digits-path))]
+  (def fetch-test-dataset #(let [res (read-digits-dataset test-digits-path)]
                                  (println "Done loading the digits test set") res)))
 
 (defn handwriting-class-test [k]
@@ -124,7 +124,7 @@
     {:errors (stats 0)
      :total (stats 1)
      :errors-details (stats 2)}))
-
+(comment )
 
 
 
