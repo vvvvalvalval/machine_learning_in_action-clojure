@@ -1,14 +1,1 @@
-# cloj_mlia
-
-A Clojure library designed to ... well, that part is up to you.
-
-## Usage
-
-FIXME
-
-## License
-
-Copyright © 2014 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+An attempt to port the sample programs of Peter Harrington's Machine Learning In Action to the Clojure programming language.
