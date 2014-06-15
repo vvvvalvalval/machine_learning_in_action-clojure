@@ -41,10 +41,8 @@
   (->> dataset (group-by #(nth % feat-idx) ) 
     (algo/transform-vals vec)))
 
-(defn choose-best-feature-to-split [dataset & [num-features]]
-  (let [num-features (or num-features (-> dataset first count (- 1)))
-        get-label #(nth % num-features)
-        size (count dataset)
+(defn choose-best-feature-to-split [get-label features-indices dataset]
+  (let [size (count dataset)
         
         base-entropy (calc-Shannon-entropy get-label dataset)
         entropy-of-split (fn [split] 
@@ -56,9 +54,56 @@
         info-gain-on-feat (fn [feat-idx] (- base-entropy
                                             (entropy-of-split (split-on feat-idx dataset)) ))
         ]
-    (algo/argmax info-gain-on-feat (range num-features))
+    (algo/argmax info-gain-on-feat features-indices)
     ))
 (comment 
-  (choose-best-feature-to-split
-    (:dataset (create-dataset)) 2) => 0
+  (choose-best-feature-to-split 
+    #(nth % 2) #{0 1}
+    (:dataset (create-dataset))) => 0
+ )
+
+(def create-tree
+  (let [aux (fn [get-class labels dataset available-features-indices]
+              (let [classes (map get-class dataset)]
+                (cond
+                  (algo/constant-coll? classes) (first classes), ; if unanim, return class value
+                  (empty? available-features-indices) (algo/most-frequent classes), ; no more features to split on, majority vote
+                  :else ; otherwise, keep on spliting
+                  (let [best-feat-idx (choose-best-feature-to-split get-class available-features-indices dataset)
+                        best-feat (labels best-feat-idx)
+                        split-datasets (split-on best-feat-idx dataset)
+                        remaining-indices (disj available-features-indices best-feat-idx)
+                        children (algo/transform-vals
+                                   (fn [sub-dataset]
+                                     (aux get-class labels sub-dataset remaining-indices)) ; recursive call
+                                   split-datasets)
+                    ]
+                    {best-feat children})
+                  )))]
+    (fn [get-class labels dataset]
+      (aux get-class labels dataset 
+           (->> labels count range set))))
   )
+(comment
+  (let [{:keys [dataset labels]} (create-dataset)]
+    (create-tree last labels dataset)) => {:no-surfacing {1 {:flippers {1 :yes, 0 :no}}, 0 :no}}
+)
+
+(defn classifier-from [labels decision-tree]
+  (let [index-for-label (reduce (fn [m i] (assoc m (labels i) i)) {} (range (count labels)))
+        get-feature (fn [label instance] (instance (index-for-label label)))
+        classify-with (fn [tree instance]
+                        (if (map? tree)
+                          (let [feature (first (keys tree))]
+                            (recur (get-in tree [feature (get-feature feature instance)]) instance))
+                          tree))]
+    (fn classify [instance]
+      (classify-with decision-tree instance))
+    ))
+(comment 
+  (let [classify (classifier-from [:no-surfacing, :flippers]
+                                  {:no-surfacing {1 {:flippers {1 :yes, 0 :no}}, 0 :no}})]
+    (classify [1 0]) => :no
+    (classify [1 1]) => :yes
+    ))
+

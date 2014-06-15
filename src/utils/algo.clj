@@ -114,3 +114,27 @@ Examples :
                   [:a :b :a :a :c :b :a :d :a :c :a :c :c :c :b ]) => {:d 1, :c 5, :b 3, :a 6}
   (values-counts inc
                   [0 1 1 2 2 2 3 3 3 3]) => {4 4, 3 3, 2 2, 1 1})
+
+(defn most-frequent [coll]
+  (let [frequencies (values-counts identity coll)]
+    (argmax frequencies (keys frequencies))))
+(comment
+  (most-frequent
+  [:a :a :b]) => :a
+  (most-frequent
+    [:a :a :a :b :b :c :b :b :a :b]) => :b
+  (most-frequent
+    [:a :a :a :b :b :c :b :b :a :a :a :b]) => :a
+  )
+
+(defn constant-coll? [coll]
+  (if (empty? coll) 
+    true
+    (let [first-item (first coll)] (every? #(= % first-item) (rest coll)))
+    ))
+(comment 
+  (constant-coll? ()) => true
+  (constant-coll? [:a :a :a]) => true
+  (constant-coll? [:a :b :a]) => false
+  )
+
