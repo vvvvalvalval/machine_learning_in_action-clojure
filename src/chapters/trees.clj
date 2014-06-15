@@ -63,7 +63,7 @@
  )
 
 (def create-tree
-  (let [aux (fn [get-class labels dataset available-features-indices]
+  (let [aux (fn self[get-class labels dataset available-features-indices]
               (let [classes (map get-class dataset)]
                 (cond
                   (algo/constant-coll? classes) (first classes), ; if unanim, return class value
@@ -75,10 +75,9 @@
                         remaining-indices (disj available-features-indices best-feat-idx)
                         children (algo/transform-vals
                                    (fn [sub-dataset]
-                                     (aux get-class labels sub-dataset remaining-indices)) ; recursive call
-                                   split-datasets)
-                    ]
-                    {best-feat children})
+                                     (self get-class labels sub-dataset remaining-indices)) ; recursive call
+                                   split-datasets)]
+                    [best-feat children])
                   )))]
     (fn [get-class labels dataset]
       (aux get-class labels dataset 
@@ -86,23 +85,25 @@
   )
 (comment
   (let [{:keys [dataset labels]} (create-dataset)]
-    (create-tree last labels dataset)) => {:no-surfacing {1 {:flippers {1 :yes, 0 :no}}, 0 :no}}
+    (create-tree last labels dataset)) => [:no-surfacing {1 [:flippers {1 :yes, 0 :no}], 0 :no}]
 )
 
 (defn classifier-from [labels decision-tree]
   (let [index-for-label (reduce (fn [m i] (assoc m (labels i) i)) {} (range (count labels)))
         get-feature (fn [label instance] (instance (index-for-label label)))
         classify-with (fn [tree instance]
-                        (if (map? tree)
-                          (let [feature (first (keys tree))]
-                            (recur (get-in tree [feature (get-feature feature instance)]) instance))
+                        (if (vector? tree)
+                          (let [feature (tree 0)]
+                            (recur (get-in tree [1 (get-feature feature instance)]) instance))
                           tree))]
     (fn classify [instance]
       (classify-with decision-tree instance))
     ))
 (comment 
   (let [classify (classifier-from [:no-surfacing, :flippers]
-                                  {:no-surfacing {1 {:flippers {1 :yes, 0 :no}}, 0 :no}})]
+                                  [:no-surfacing {1 [:flippers {1 :yes,
+                                                                0 :no}]
+                                                  0 :no}])]
     (classify [1 0]) => :no
     (classify [1 1]) => :yes
     ))
