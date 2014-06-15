@@ -1,5 +1,5 @@
 (ns utils.algo
-  (:import [java.util TreeSet Comparator]
+  (:import [java.util TreeMap Comparator]
            )
   (:use clojure.pprint
         clojure.repl))
@@ -22,19 +22,43 @@
       (cond 
         (> d 0) 1
         (< d 0) -1
-        :else (if (= x y) 0 -1)
+        :else 0
         ))))
 
-(defn k-best 
-  "Finds the k best (i.e smallest) DISTINCT items in the `items` sequence with regards to the `compare` function."
-  [compare k items]
-  (let [k-best (TreeSet. (comparator-from compare))]
-    (doseq [item items]
-      (.add k-best item)
-      (when (> (.size k-best) k)
-        (.pollLast k-best))
-      )
-    (vec k-best)))
+(def k-lowest 
+  "Finds the k best (i.e smallest) DISTINCT items in the `items` sequence with regards to the `score` function."
+  (let [sign (fn [d] 
+               (cond (> d 0) 1, (< d 0) -1, :else 0))
+        ^Comparator pairs-comparator (proxy [Comparator] []
+                                       (compare [p1 p2]
+                                         (let [d1 (- (p1 0) (p2 0))]
+                                           (if (= 0 d1)
+                                             (- (p1 1) (p2 1))
+                                             (sign d1))))
+                                       )]
+    (fn [score k items]
+     (let [k-best (TreeMap. pairs-comparator)]
+       (loop [rem-items items
+              idx 0]
+         (if rem-items
+           (let [item (first rem-items)]
+             (.put k-best [(score item) idx] item)
+             (when (> (.size k-best) k)
+               (.pollLastEntry k-best))
+             (recur (next rem-items)
+                    (inc idx)))
+           (->> k-best .values seq)))
+       ))))
+(comment
+  (let 
+    [size 10000
+     pol #(* (- % 3) (- % 2.3) (+ % 5.3))
+     rdm #(->> (java.lang.Math/random) (* 2) (- 1))
+     items (->> (repeatedly size rdm) doall vec)]
+    (time 
+      (k-lowest pol 3 items))
+    ) => (0.943914174845194 0.9038520034140807 0.8271175189363764)
+  )
 
 ;; MAPS
 (defn transform-vals 
@@ -77,3 +101,8 @@ Examples :
   )
 (def argmax (comp first search-max))
 
+(defn zip [& colls]
+  (apply mapv vector colls))
+(comment
+  (zip [1 2 3] [:a :b :c] ["You" "Pi" "Ya"]) => [[1 :a "You"] [2 :b "Pi"] [3 :c "Ya"]]
+  )
